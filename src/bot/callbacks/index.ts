@@ -303,44 +303,44 @@ async function handleFindPartner(ctx: Context, userId: string): Promise<void> {
     ? '🔍 *Searching with your preferences...*'
     : '🔍 *Searching for a partner...*\n\nPlease wait while we find someone for you.';
 
-  await ctx.editMessageText(searchText, {
+  const searchMsg = await ctx.reply(searchText + '\n\n/stop to cancel', {
     parse_mode: 'Markdown',
-    reply_markup: {
-      inline_keyboard: [[{ text: '⏹️ Stop Searching', callback_data: 'stop_searching' }]],
-    },
   });
 
-  const match = await matchmakingService.findMatch(userId);
+  let match = await matchmakingService.findMatch(userId);
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  while (!match && attempts < maxAttempts) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    match = await matchmakingService.findMatch(userId);
+    attempts++;
+  }
 
   if (match) {
+    const chatText = `🎉 *Partner found!*
+
+You are now anonymously connected. Say hello!
+
+Commands:
+/next - Find new partner
+/stop - End chat`;
+
+    try {
+      await ctx.editMessageText(chatText, { parse_mode: 'Markdown' });
+    } catch {
+      await ctx.reply(chatText, { parse_mode: 'Markdown' });
+    }
+  } else {
     await ctx.editMessageText(
-      '🎉 *Partner found!*\n\nYou are now anonymously connected. Say hello!',
+      '🔍 *Still searching...*\n\nNo partner found yet. Keep waiting.',
       {
         parse_mode: 'Markdown',
         reply_markup: {
-          inline_keyboard: [
-            [{ text: '➡️ Next', callback_data: 'next_partner' }],
-            [
-              { text: '🛑 Stop Chat', callback_data: 'stop_chat' },
-              { text: '🚩 Report', callback_data: 'report_menu' },
-            ],
-          ],
+          inline_keyboard: [[{ text: '⏹️ Stop Searching', callback_data: 'stop_searching' }]],
         },
       }
     );
-
-    await ctx.reply('🎉 *Partner found!*\n\nYou are now anonymously connected.', {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '➡️ Next', callback_data: 'next_partner' }],
-          [
-            { text: '🛑 Stop Chat', callback_data: 'stop_chat' },
-            { text: '🚩 Report', callback_data: 'report_menu' },
-          ],
-        ],
-      },
-    });
   }
 }
 
@@ -377,28 +377,19 @@ async function handleNextPartner(ctx: Context, userId: string): Promise<void> {
   await matchmakingService.addToQueue(userId);
 
   await ctx.editMessageText(
-    '🔍 *Searching for a new partner...*\n\nPlease wait.',
-    {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [[{ text: '⏹️ Stop Searching', callback_data: 'stop_searching' }]],
-      },
-    }
+    '🔍 *Searching for a new partner...*\n\n/stop to cancel',
+    { parse_mode: 'Markdown' }
   );
 
   const newMatch = await matchmakingService.findMatch(userId);
 
   if (newMatch) {
     await ctx.editMessageText(
-      '🎉 *Partner found!*\n\nYou are now anonymously connected.',
-      {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: '➡️ Next', callback_data: 'next_partner' }],
-            [
-              { text: '🛑 Stop Chat', callback_data: 'stop_chat' },
-              { text: '🚩 Report', callback_data: 'report_menu' },
+      '🎉 *Partner found!*\n\nYou are now anonymously connected.\n\n/next - Find new\n/stop - End chat',
+      { parse_mode: 'Markdown' }
+    );
+  }
+}
             ],
           ],
         },
@@ -423,17 +414,8 @@ async function handleStopChat(ctx: Context, userId: string): Promise<void> {
   await matchmakingService.clearMatch(userId);
 
   await ctx.editMessageText(
-    '🛑 *Chat ended.*\n\nWhat would you like to do next?',
-    {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '🔍 Find New Partner', callback_data: 'find_partner' }],
-          [{ text: '🚩 Report Last User', callback_data: 'report_last' }],
-          [{ text: '📋 Main Menu', callback_data: 'main_menu' }],
-        ],
-      },
-    }
+    '🛑 *Chat ended.*\n\n/next - Find new partner\n/report - Report last user\n/menu - Main menu',
+    { parse_mode: 'Markdown' }
   );
 }
 

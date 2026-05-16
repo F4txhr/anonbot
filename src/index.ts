@@ -34,10 +34,15 @@ async function createBot(): Promise<Bot> {
 
   bot.command('start', commands.startCommand);
   bot.command('help', commands.helpCommand);
+  bot.command('find', commands.findCommand);
+  bot.command('next', commands.nextCommand);
+  bot.command('stop', commands.stopCommand);
+  bot.command('report', commands.reportCommand);
   bot.command('stats', commands.statsCommand);
   bot.command('users', commands.usersCommand);
   bot.command('reports', commands.reportsCommand);
   bot.command('broadcast', commands.broadcastCommand);
+  bot.command('menu', commands.showMainMenu);
 
   bot.on('callback_query:data', callbacks.handleCallback);
 
@@ -74,6 +79,11 @@ async function startBot(): Promise<void> {
 
   await bot.api.setMyCommands([
     { command: 'start', description: 'Start the bot' },
+    { command: 'find', description: 'Find a partner' },
+    { command: 'next', description: 'Find new partner' },
+    { command: 'stop', description: 'Stop chatting' },
+    { command: 'report', description: 'Report user' },
+    { command: 'menu', description: 'Main menu' },
     { command: 'help', description: 'Get help' },
   ]);
 

@@ -68,7 +68,7 @@ async function relayMessageToPartner(ctx: Context, senderId: string, matchId: st
 
   try {
     if (message.text) {
-      await api.sendMessage(partnerTelegramId, `🟢 ${message.text}`);
+      await api.sendMessage(partnerTelegramId, message.text);
     } else if (message.photo) {
       const photos = message.photo;
       if (photos.length > 0) {
@@ -76,27 +76,27 @@ async function relayMessageToPartner(ctx: Context, senderId: string, matchId: st
         if (largest) {
           const caption = (message as unknown as Record<string, unknown>)?.caption as string | undefined;
           await api.sendPhoto(partnerTelegramId, largest.file_id, {
-            caption: caption ? `🟢 ${caption}` : undefined,
+            caption: caption || undefined,
           });
         }
       }
     } else if (message.video) {
       const caption = (message as unknown as Record<string, unknown>)?.caption as string | undefined;
-      await api.sendVideo(partnerTelegramId, message.video.file_id, {
-        caption: caption ? `🟢 ${caption}` : undefined,
-      });
+await api.sendVideo(partnerTelegramId, message.video.file_id, {
+          caption: caption || undefined,
+        });
     } else if (message.voice) {
       await api.sendVoice(partnerTelegramId, message.voice.file_id);
     } else if (message.audio) {
       const caption = (message as unknown as Record<string, unknown>)?.caption as string | undefined;
-      await api.sendAudio(partnerTelegramId, message.audio.file_id, {
-        caption: caption ? `🟢 ${caption}` : undefined,
-      });
+await api.sendAudio(partnerTelegramId, message.audio.file_id, {
+          caption: caption || undefined,
+        });
     } else if (message.animation) {
       const caption = (message as unknown as Record<string, unknown>)?.caption as string | undefined;
-      await api.sendAnimation(partnerTelegramId, message.animation.file_id, {
-        caption: caption ? `🟢 ${caption}` : undefined,
-      });
+await api.sendAnimation(partnerTelegramId, message.animation.file_id, {
+          caption: caption || undefined,
+        });
     } else if (message.sticker) {
       await api.sendSticker(partnerTelegramId, message.sticker.file_id);
     } else if (message.document) {
@@ -105,13 +105,13 @@ async function relayMessageToPartner(ctx: Context, senderId: string, matchId: st
       const ext = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
 
       if (BLOCKED_EXTENSIONS.includes(ext)) {
-        await api.sendMessage(partnerTelegramId, '🟢 This file type is not allowed.');
+        await api.sendMessage(partnerTelegramId, 'This file type is not allowed.');
         return;
       }
 
       const caption = (message as unknown as Record<string, unknown>)?.caption as string | undefined;
       await api.sendDocument(partnerTelegramId, doc.file_id, {
-        caption: caption ? `🟢 ${caption}` : undefined,
+        caption: caption || undefined,
       });
     } else if (message.video_note) {
       await api.sendVideoNote(partnerTelegramId, message.video_note.file_id);

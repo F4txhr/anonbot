@@ -65,7 +65,7 @@ export class RelayService {
     const api = ctx.api;
 
     if (message.text) {
-      await api.sendMessage(partnerId, `🟢 ${message.text}`);
+      await api.sendMessage(partnerId, message.text);
     } else if (message.photo) {
       const photos = message.photo;
       if (photos.length > 0) {

@@ -195,3 +195,145 @@ export async function broadcastCommand(ctx: Context): Promise<void> {
 
   await ctx.reply(`📢 Broadcast queued: "${message}"`);
 }
+
+export async function nextCommand(ctx: Context): Promise<void> {
+  const telegramId = ctx.from?.id;
+  if (!telegramId) return;
+
+  const user = await userRepository.findByTelegramId(BigInt(telegramId));
+  if (!user) {
+    await ctx.reply('Use /start first');
+    return;
+  }
+
+  const state = await matchmakingService.getUserState(user.id);
+  if (state.state !== 'CHATTING') {
+    await ctx.reply('You are not in a chat. Use /find to find a partner.');
+    return;
+  }
+
+  const match = await matchRepository.getMatchByUserId(user.id);
+  if (match) {
+    const partnerId = match.userAId === user.id ? match.userBId : match.userAId;
+    await matchRepository.endMatch(match.id, 'SKIPPED');
+
+    const partnerState = await matchmakingService.getUserState(partnerId);
+    if (partnerState.matchId) {
+      await matchmakingService.clearMatch(partnerId);
+    }
+  }
+
+  await matchmakingService.clearMatch(user.id);
+  await matchmakingService.addToQueue(user.id);
+
+  await ctx.reply('🔍 Searching for a new partner...');
+}
+
+export async function stopCommand(ctx: Context): Promise<void> {
+  const telegramId = ctx.from?.id;
+  if (!telegramId) return;
+
+  const user = await userRepository.findByTelegramId(BigInt(telegramId));
+  if (!user) {
+    await ctx.reply('Use /start first');
+    return;
+  }
+
+  const state = await matchmakingService.getUserState(user.id);
+  if (state.state !== 'CHATTING') {
+    if (state.state === 'SEARCHING') {
+      await matchmakingService.removeFromQueue(user.id);
+      await ctx.reply('⏹️ Search stopped.');
+    } else {
+      await ctx.reply('You are not in a chat.');
+    }
+    return;
+  }
+
+  const match = await matchRepository.getMatchByUserId(user.id);
+  if (match) {
+    const partnerId = match.userAId === user.id ? match.userBId : match.userAId;
+    await matchRepository.endMatch(match.id, 'STOPPED');
+
+    const partnerState = await matchmakingService.getUserState(partnerId);
+    if (partnerState.matchId) {
+      await matchmakingService.clearMatch(partnerId);
+    }
+  }
+
+  await matchmakingService.clearMatch(user.id);
+
+  await ctx.reply('🛑 Chat ended.\n\n/find - Find new partner\n/menu - Main menu');
+}
+
+export async function reportCommand(ctx: Context): Promise<void> {
+  const telegramId = ctx.from?.id;
+  if (!telegramId) return;
+
+  const user = await userRepository.findByTelegramId(BigInt(telegramId));
+  if (!user) {
+    await ctx.reply('Use /start first');
+    return;
+  }
+
+  const state = await matchmakingService.getUserState(user.id);
+  if (state.state !== 'CHATTING') {
+    await ctx.reply('You are not in a chat.');
+    return;
+  }
+
+  const match = await matchRepository.getMatchByUserId(user.id);
+  if (!match) {
+    await ctx.reply('No active chat to report.');
+    return;
+  }
+
+  const targetId = match.userAId === user.id ? match.userBId : match.userAId;
+  const reason = ctx.match || 'OTHER';
+
+  await moderationService.handleReport(user.id, targetId, String(reason));
+
+  await matchRepository.endMatch(match.id, 'BANNED');
+  await matchmakingService.clearMatch(user.id);
+  await matchmakingService.clearMatch(targetId);
+
+  await ctx.reply('✅ Report submitted. Thank you!');
+}
+
+export async function findCommand(ctx: Context): Promise<void> {
+  const telegramId = ctx.from?.id;
+  if (!telegramId) return;
+
+  const bannedUser = await userRepository.findBannedUser(BigInt(telegramId));
+  if (bannedUser) {
+    await ctx.reply('⛔ You are banned.');
+    return;
+  }
+
+  const user = await userRepository.findByTelegramId(BigInt(telegramId));
+  if (!user) {
+    await ctx.reply('Use /start first');
+    return;
+  }
+
+  const state = await matchmakingService.getUserState(user.id);
+
+  if (state.state === 'CHATTING') {
+    await ctx.reply('You are already in a chat! Use /stop to end it first.');
+    return;
+  }
+
+  if (state.state === 'SEARCHING') {
+    await ctx.reply('Already searching... Use /stop to cancel.');
+    return;
+  }
+
+  const isOnCooldown = await matchmakingService.isOnCooldown(user.id);
+  if (isOnCooldown) {
+    await ctx.reply('⏳ Please wait before searching again.');
+    return;
+  }
+
+  await matchmakingService.addToQueue(user.id);
+  await ctx.reply('🔍 Searching for a partner...\n\n/stop to cancel');
+}
