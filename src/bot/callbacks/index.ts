@@ -390,13 +390,6 @@ async function handleNextPartner(ctx: Context, userId: string): Promise<void> {
     );
   }
 }
-            ],
-          ],
-        },
-      }
-    );
-  }
-}
 
 async function handleStopChat(ctx: Context, userId: string): Promise<void> {
   const match = await matchRepository.getMatchByUserId(userId);

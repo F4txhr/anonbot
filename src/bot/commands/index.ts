@@ -337,3 +337,32 @@ export async function findCommand(ctx: Context): Promise<void> {
   await matchmakingService.addToQueue(user.id);
   await ctx.reply('🔍 Searching for a partner...\n\n/stop to cancel');
 }
+
+export async function menuCommand(ctx: Context): Promise<void> {
+  const telegramId = ctx.from?.id;
+  if (!telegramId) return;
+
+  const user = await userRepository.findByTelegramId(BigInt(telegramId));
+  if (!user) {
+    await ctx.reply('Use /start first');
+    return;
+  }
+
+  const isVip = await vipService.isVip(user.id);
+
+  const menuText = `🏠 *Main Menu*
+
+Anonymous Chat
+Connect with random strangers instantly.
+Stay anonymous.
+Be respectful.
+
+Commands:
+/find - Find a partner
+/vip - VIP Membership
+/invite - Invite & Earn
+/settings - Settings
+/help - Help`;
+
+  await ctx.reply(menuText, { parse_mode: 'Markdown' });
+}

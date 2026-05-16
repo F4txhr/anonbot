@@ -42,7 +42,7 @@ async function createBot(): Promise<Bot> {
   bot.command('users', commands.usersCommand);
   bot.command('reports', commands.reportsCommand);
   bot.command('broadcast', commands.broadcastCommand);
-  bot.command('menu', commands.showMainMenu);
+  bot.command('menu', commands.menuCommand);
 
   bot.on('callback_query:data', callbacks.handleCallback);
 
