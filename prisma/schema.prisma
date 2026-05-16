@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  PREFER_NOT_TO_SAY
+}
+
+enum AgeRange {
+  AGE_18_22
+  AGE_23_30
+  AGE_31_40
+  AGE_40_PLUS
+  PREFER_NOT_TO_SAY
+}
+
+enum QueueType {
+  FREE
+  VIP
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  NSFW
+  SCAM
+  FAKE_BEHAVIOR
+  OTHER
+}
+
+enum MatchEndedReason {
+  SKIPPED
+  STOPPED
+  BANNED
+  TIMEOUT
+  DISCONNECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum ReferralStatus {
+  PENDING
+  QUALIFIED
+  REJECTED
+  REWARDED
+}
+
+enum BanType {
+  TEMPORARY
+  PERMANENT
+}
+
+model User {
+  id            String    @id @default(uuid())
+  telegramId    BigInt    @unique
+  gender        Gender?
+  ageRange      AgeRange?
+  country       String?
+  interests     String[]  @default([])
+  trustScore    Int       @default(100)
+  isVip         Boolean   @default(false)
+  vipExpiresAt  DateTime?
+  isBanned      Boolean   @default(false)
+  banExpiresAt  DateTime?
+  referralCode  String    @unique
+  referrerId    String?
+  referredBy    User?     @relation("ReferralRelation", fields: [referrerId], references: [id])
+  referrals     User[]    @relation("ReferralRelation")
+
+  preferences   UserPreferences?
+
+  matchesAsA    Match[]   @relation("MatchUserA")
+  matchesAsB    Match[]   @relation("MatchUserB")
+  queueEntries  QueueEntry[]
+  reportsMade   Report[]  @relation("Reporter")
+  reportsAgainst Report[] @relation("Reported")
+  payments      Payment[]
+  referral      Referral? @relation("Referrer")
+  referredUser  Referral? @relation("ReferredUser")
+  bans          Ban[]
+  moderationLogs ModerationLog[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([telegramId])
+  @@index([isVip])
+  @@index([isBanned])
+}
+
+model UserPreferences {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferredGender  Gender?
+  preferredAgeRange AgeRange?
+  preferredCountry String?
+  preferredInterests String[] @default([])
+}
+
+model Match {
+  id          String           @id @default(uuid())
+  userAId     String
+  userBId     String
+  userA       User             @relation("MatchUserA", fields: [userAId], references: [id])
+  userB       User             @relation("MatchUserB", fields: [userBId], references: [id])
+  startedAt   DateTime         @default(now())
+  endedAt     DateTime?
+  endedReason MatchEndedReason?
+
+  @@index([userAId])
+  @@index([userBId])
+  @@index([startedAt])
+}
+
+model QueueEntry {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  queueType   QueueType
+  preferences Json?
+  queuedAt    DateTime  @default(now())
+
+  @@index([queueType])
+  @@index([queuedAt])
+}
+
+model Report {
+  id         String       @id @default(uuid())
+  reporterId String
+  reporter   User         @relation("Reporter", fields: [reporterId], references: [id])
+  targetId   String
+  target     User         @relation("Reported", fields: [targetId], references: [id])
+  reason     ReportReason
+  createdAt  DateTime     @default(now())
+
+  @@index([reporterId])
+  @@index([targetId])
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  starsAmount     Int
+  telegramPaymentId String?
+  status          PaymentStatus @default(PENDING)
+  createdAt       DateTime      @default(now())
+  completedAt     DateTime?
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Referral {
+  id             String          @id @default(uuid())
+  referrerId     String          @unique
+  referrer       User            @relation("Referrer", fields: [referrerId], references: [id])
+  referredUserId String          @unique
+  referredUser   User            @relation("ReferredUser", fields: [referredUserId], references: [id])
+  status         ReferralStatus  @default(PENDING)
+  matched        Boolean         @default(false)
+  rewardedAt     DateTime?
+
+  @@index([referrerId])
+  @@index([status])
+}
+
+model Ban {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       BanType
+  reason     String
+  createdBy  String?
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ModerationLog {
+  id          String   @id @default(uuid())
+  action      String
+  targetUserId String?
+  targetUser   User?    @relation(fields: [targetUserId], references: [id])
+  adminId     String?
+  details     Json?
+  createdAt   DateTime @default(now())
+
+  @@index([targetUserId])
+  @@index([createdAt])
+}
+
+model Settings {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
